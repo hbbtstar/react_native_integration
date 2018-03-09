@@ -1,44 +1,49 @@
-const { Dimensions } = require('react-native');
+const { Dimensions, Platform } = require('react-native');
 
 const uuidv4 = require('uuid/v4');
 
 class ParselyTracker {
-    constructor(apikey) {
+    constructor(apikey, appname) {
         this.apikey = apikey;
         // if you wanted to get a persistent uuid you could use the native Android or iOS methods for that (like android's getAdKey)
-        this.data = JSON.stringify({"parsely-site-id": uuidv4()});
-        // you'd want to get the public IP here via some other means if that matters to you
-        this.ip_address = "0.0.0.0";
-        this.rootUrl = "http://srv.pixel.parsely.com/plogger/";
-        this.ua = "Parsely mobileproxy";
-    };
-
-    static getScreenParsely() {
-        let height = Dimensions.get("window").height;
-        let width = Dimensions.get("window").width;
-        let screenString = height + "x" + width;
-        return screenString + "|" + screenString + "|" + "24";
+        this.parsely_site_uuid = uuidv4();
+        this.rootUrl = "http://srv.pixel.parsely.com/plogger/mobileproxy";
+        this.os = Platform.OS;
+        this.os_version = Platform.Version;
+        this.manufacturer = Platform.OS === 'ios' ? "Apple" : "Android";
+        this.appname = "Sample Parsely React App";
     };
 
     sendAction(url) {
-        let fullUrl = this.rootUrl + "?idsite=" + this.apikey;
-        fullUrl += "&date=" + new Date().toString();
-        fullUrl += "&ip_address" + this.ip_address;
-        fullUrl += "&url=" + url;
-        fullUrl += "&urlref=" + "";
-        fullUrl += "&screen=" + ParselyTracker.getScreenParsely();
-        fullUrl += "&action=" + "pageview";
-        fullUrl += "&data=" + this.data;
-
-        let headers = {"User-Agent": this.ua};
-        console.log("URL request being sent is: "  + fullUrl);
-        fetch(encodeURI(fullUrl), {
-         headers: headers
+        let fullUrl = this.rootUrl;
+        let params = {
+            "data": {
+                "os_version": this.os_version,
+                "os": this.os,
+                "idsite": this.apikey,
+                "manufacturer": this.manufacturer,
+                "appname": this.appname,
+                "parsely_site_uuid": this.parsely_site_uuid
+            },
+            "events": [
+                {
+                    "url": url,
+                    "ts": new Date().getTime()
+                }
+            ]
+        };
+        fetch(fullUrl, {
+           method: 'POST',
+           headers: {
+               "Content-Type": "application/x-www-form-urlencoded"
+           },
+            body: JSON.stringify(params)
         }).then(
             (response) => console.log(response)
         ).catch(
             (error) => console.log(error)
         );
+
 
 
 
