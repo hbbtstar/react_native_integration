@@ -26,7 +26,7 @@ let tracker = new ParselyTracker('elevatedtoday.com');
 
 export default class App extends Component<Props> {
     buttonPressed = function() {
-      tracker.sendAction('http://elevatedtoday.com/2016/03/16/7-things-er-doctors-will-not-allow-in-their-house/');
+      tracker.trackURL('http://elevatedtoday.com/2016/03/16/7-things-er-doctors-will-not-allow-in-their-house/');
     };
 
   render() {

@@ -1,4 +1,4 @@
-const { Dimensions, Platform } = require('react-native');
+const { NetInfo, Platform, AsyncStorage } = require('react-native');
 
 const uuidv4 = require('uuid/v4');
 
@@ -11,45 +11,71 @@ class ParselyTracker {
         this.os = Platform.OS;
         this.os_version = Platform.Version;
         this.manufacturer = Platform.OS === 'ios' ? "Apple" : "Android";
-        this.appname = "Sample Parsely React App";
+        this.appname = appname;
+        this.queue_prefix = "ParselyReactEvents";
     };
 
-    sendAction(url) {
-        let fullUrl = this.rootUrl;
-        let params = {
-            "data": {
-                "idsite": encodeURIComponent(this.apikey),
-                "parsely_site_uuid": encodeURIComponent(this.parsely_site_uuid),
-                "os": encodeURIComponent(this.os),
-                "os_version": encodeURIComponent(this.os_version),
-                "manufacturer": encodeURIComponent(this.manufacturer),
-                "appname": encodeURIComponent(this.appname)
-            },
-            "events": [
-                {
-                    "url": encodeURIComponent(url),
-                    "ts": (new Date().getTime() / 1000)
+    async send() {
+        NetInfo.isConnected.fetch().then(
+            async (isConnected) => {
+                if (isConnected) {
+                    let fullUrl = this.rootUrl;
+                    let params = {
+                        "data": {
+                            "idsite": encodeURIComponent(this.apikey),
+                            "parsely_site_uuid": encodeURIComponent(this.parsely_site_uuid),
+                            "os": encodeURIComponent(this.os),
+                            "os_version": encodeURIComponent(this.os_version),
+                            "manufacturer": encodeURIComponent(this.manufacturer),
+                            "appname": encodeURIComponent(this.appname)
+                        }
+                    };
+
+                    params.events = JSON.parse(await AsyncStorage.getItem(this.queue_prefix));
+
+                    fetch(fullUrl, {
+                        method: 'POST',
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded"
+                        },
+                        body: "rqs=" + JSON.stringify(params)
+                    }).then(
+                        async (response) => {
+                            console.log(response);
+                            await AsyncStorage.removeItem(this.queue_prefix);
+                        }
+                    ).catch(
+                        (error) => console.log(error)
+                    );
                 }
-            ]
+            }
+        );
+    }
+
+    trackURL(url) {
+        let event = {
+            "url": encodeURIComponent(url),
+            "ts": (new Date().getTime() / 1000)
         };
 
-        console.log(JSON.stringify(params));
-        fetch(fullUrl, {
-           method: 'POST',
-           headers: {
-               "Content-Type": "application/x-www-form-urlencoded"
-           },
-            body: "rqs=" + JSON.stringify(params)
-        }).then(
-            (response) => console.log(response)
-        ).catch(
-            (error) => console.log(error)
+        this.pushToQueue(event).then(
+            (result) => console.log("added successfully!")
         );
 
+    }
 
+    async pushToQueue(event) {
+        let queue = await AsyncStorage.getItem(this.queue_prefix);
+        let eventQueue = await JSON.parse(queue) || [];
 
-
+        eventQueue.push(event);
+        await AsyncStorage.setItem(this.queue_prefix, JSON.stringify(eventQueue));
+        if (eventQueue.length >= 10) {
+            this.send();
+        }
     }
 }
+
+
 
 export { ParselyTracker };
