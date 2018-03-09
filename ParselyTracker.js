@@ -9,7 +9,6 @@ class ParselyTracker {
         this.parsely_site_uuid = uuidv4();
         this.rootUrl = "http://srv.pixel.parsely.com/mobileproxy";
         this.os = Platform.OS;
-        this.urlref = "parsely_mobile_sdk";
         this.os_version = Platform.Version;
         this.manufacturer = Platform.OS === 'ios' ? "Apple" : "Android";
         this.appname = "Sample Parsely React App";
@@ -19,33 +18,28 @@ class ParselyTracker {
         let fullUrl = this.rootUrl;
         let params = {
             "data": {
-                "os_version": this.os_version,
-                "os": this.os,
-                "idsite": this.apikey,
-                "manufacturer": this.manufacturer,
-                "appname": this.appname,
-                "parsely_site_uuid": this.parsely_site_uuid,
-                "urlref": this.urlref
+                "idsite": encodeURIComponent(this.apikey),
+                "parsely_site_uuid": encodeURIComponent(this.parsely_site_uuid),
+                "os": encodeURIComponent(this.os),
+                "os_version": encodeURIComponent(this.os_version),
+                "manufacturer": encodeURIComponent(this.manufacturer),
+                "appname": encodeURIComponent(this.appname)
             },
             "events": [
                 {
-                    "url": url,
-                    "ts": new Date().getTime()
+                    "url": encodeURIComponent(url),
+                    "ts": (new Date().getTime() / 1000)
                 }
             ]
         };
+
+        console.log(JSON.stringify(params));
         fetch(fullUrl, {
            method: 'POST',
            headers: {
                "Content-Type": "application/x-www-form-urlencoded"
            },
-            body:
-                JSON.stringify(
-                    {
-                        "rqs": params
-                    }
-
-            )
+            body: "rqs=" + JSON.stringify(params)
         }).then(
             (response) => console.log(response)
         ).catch(
