@@ -15,7 +15,7 @@ class ParselyTracker {
         this.queue_prefix = "ParselyReactEvents";
     };
 
-    async send() {
+    send() {
         NetInfo.isConnected.fetch().then(
             async (isConnected) => {
                 if (isConnected) {
