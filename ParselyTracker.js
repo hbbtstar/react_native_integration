@@ -94,7 +94,7 @@ class ParselyTracker {
     this.enqueueEvent({
       url: this.engagedStartTime.url,
       urlRef: this.engagedStartTime.urlRef,
-      action: 'vheartbeat',
+      action: 'heartbeat',
       inc: inc,
       tt: inc,
     });
