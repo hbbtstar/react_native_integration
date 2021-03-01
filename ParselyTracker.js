@@ -1,4 +1,8 @@
-import {getDeviceId, isEmulator} from 'react-native-device-info';
+import {
+  getUserAgent,
+  getDeviceId,
+  isEmulator,
+} from 'react-native-device-info';
 
 const {Dimensions, Platform} = require('react-native');
 
@@ -48,7 +52,7 @@ class ParselyTracker {
     }
   }
 
-  flushQueue() {
+  async flushQueue() {
     if (this.eventQueue.length === 0) {
       return;
     }
@@ -71,10 +75,12 @@ class ParselyTracker {
       eventsToSend.push(newTrackingEvent);
     }
     let bodyData = {"events": eventsToSend};
+    let userAgent = await getUserAgent();
     fetch(fullUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': userAgent
       },
       body: JSON.stringify(bodyData),
     })

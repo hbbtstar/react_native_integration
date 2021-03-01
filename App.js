@@ -62,7 +62,7 @@ const App = (props) => {
           <Button
             title={'Track Page View'}
             onPress={() => {
-              tracker.trackPageView('https://www.foo.com');
+              tracker.trackPageView('https://www.elevatedtoday.com');
             }}
           />
 
