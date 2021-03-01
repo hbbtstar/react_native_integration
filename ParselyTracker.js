@@ -20,6 +20,7 @@ class ParselyTracker {
     this.eventQueue = [];
     this.insideEmulator = isEmulator();
     this.engagedStartTime = null;
+    this.videoStartTime = null;
     this.lastVideoPaused = null;
     this.pvid = Math.floor(Math.random() * Math.floor(98446744073709));
     this.vsid = Math.floor(Math.random() * Math.floor(98446744073709));
@@ -110,6 +111,16 @@ class ParselyTracker {
     this.engagedStartTime = {url: url, urlRef: urlRef, startTime: Date.now()};
   }
 
+  startVideoEngagement(url, urlRef) {
+    if (this.engagedStartTime) {
+      console.log(
+          'Warning: start engagement called while engagement timer already running. Please call stop engagement before starting a new engagement timer.',
+      );
+      return;
+    }
+    this.videoStartTime = {url: url, urlRef: urlRef, startTime: Date.now()};
+  }
+
   stopEngagement() {
     if (this.engagedStartTime === null) {
       return;
@@ -125,15 +136,29 @@ class ParselyTracker {
     this.engagedStartTime = null;
   }
 
+  stopVideoEngagement() {
+    if (this.videoStartTime === null) {
+      return;
+    }
+    let inc = Date.now() - this.videoStartTime.startTime;
+    this.enqueueEvent({
+      url: this.videoStartTime.url,
+      action: 'vheartbeat',
+      inc: inc,
+      tt: inc,
+    });
+    this.videoStartTime = null;
+  }
+
   trackPlay(url, urlRef, videoMetadata, extraData) {
     if (urlRef === null) {
       urlRef = '';
     }
-    if (this.engagedStartTime) {
+    if (this.videoStartTime) {
       // we're calling trackPlay when a video is already running: flush the original engaged time and start new
-      this.stopEngagement();
+      this.stopVideoEngagement();
     }
-    this.startEngagement(url, urlRef);
+    this.startVideoEngagement(url, urlRef);
     if (url !== this.lastVideoPaused) {
       this.vsid = Math.floor(Math.random() * Math.floor(98446744073709));
       this.enqueueEvent(url, urlRef, 'videostart', videoMetadata, extraData);
@@ -145,12 +170,12 @@ class ParselyTracker {
     if (this.lastVideoPaused === null) {
       return;
     }
-    this.stopEngagement();
+    this.stopVideoEngagement();
   }
 
   resetVideo() {
-    this.stopEngagement();
-    this.engagedStartTime = null;
+    this.stopVideoEngagement();
+    this.videoStartTime = null;
     this.lastVideoPaused = null;
   }
 }
