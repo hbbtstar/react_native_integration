@@ -8,7 +8,7 @@ class ParselyTracker {
   constructor(apikey, appname, use_device_id = true) {
     this.apikey = apikey;
     this.parsely_site_uuid = use_device_id ? getDeviceId() : uuidv4();
-    this.rootUrl = 'http://srv.pixel.parsely.com/mobileproxy';
+    this.rootUrl = 'https://srv.pixel.parsely.com/mobileproxy';
     this.os = Platform.OS;
     this.os_version = Platform.Version;
     this.manufacturer = Platform.OS === 'ios' ? 'Apple' : 'Android';
@@ -17,20 +17,30 @@ class ParselyTracker {
     this.insideEmulator = isEmulator();
     this.engagedStartTime = null;
     this.lastVideoPaused = null;
+    this.pvid = Math.floor(Math.random() * Math.floor(98446744073709));
+    this.vsid = Math.floor(Math.random() * Math.floor(98446744073709));
+    this.plid = Math.floor(Math.random() * Math.floor(98446744073709));
   }
 
   enqueueEvent(url, urlRef, action, metadata = null, extraData = null) {
     let parselyEvent = {
       url: url,
-      urlref: urlRef,
+      urlref: urlRef ? urlRef : "",
       idsite: this.apikey,
       action: action,
+      ts: Date.now(),
     };
     if (metadata) {
       parselyEvent.metadata = metadata;
     }
     if (extraData) {
       parselyEvent.extraData = extraData;
+    }
+    if (action === 'videostart' || action === 'vheartbeat') {
+      parselyEvent.vsid = this.vsid;
+    }
+    else {
+      parselyEvent.pvid = this.pvid;
     }
     this.eventQueue.push(parselyEvent);
     if (this.insideEmulator) {
@@ -43,28 +53,35 @@ class ParselyTracker {
       return;
     }
     let fullUrl = this.rootUrl;
-    let params = {
-      data: {
-        idsite: encodeURIComponent(this.apikey),
-        parsely_site_uuid: encodeURIComponent(this.parsely_site_uuid),
-        os: encodeURIComponent(this.os),
-        os_version: encodeURIComponent(this.os_version),
-        manufacturer: encodeURIComponent(this.manufacturer),
-        appname: encodeURIComponent(this.appname),
-      },
-      events: [this.eventQueue],
+    let data = {
+      idsite: encodeURIComponent(this.apikey),
+      parsely_site_uuid: encodeURIComponent(this.parsely_site_uuid),
+      os: encodeURIComponent(this.os),
+      os_version: encodeURIComponent(this.os_version),
+      manufacturer: encodeURIComponent(this.manufacturer),
+      appname: encodeURIComponent(this.appname),
     };
+    // pick a suitable large integer
+    let eventsToSend = [];
+    for (const trackingEvent of this.eventQueue) {
+      let newTrackingEvent = Object.assign({}, trackingEvent);
+      newTrackingEvent.idsite = data.idsite;
+      newTrackingEvent.data = {parsely_site_uuid: data.parsely_site_uuid};
+      newTrackingEvent.plid = this.plid;
+      eventsToSend.push(newTrackingEvent);
+    }
+    let bodyData = {"events": eventsToSend};
     fetch(fullUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: 'rqs=' + JSON.stringify(params),
+      body: JSON.stringify(bodyData),
     })
       .then((response) => {
         if (this.insideEmulator) {
           console.log(response);
-          console.log('Event queue flushed: ' + JSON.stringify(params));
+          console.log('Event queue flushed: ' + JSON.stringify(bodyData));
         }
 
         this.eventQueue = [];
@@ -73,6 +90,7 @@ class ParselyTracker {
   }
 
   trackPageView(url, urlRef, urlMetadata, extraData) {
+    this.pvid = Math.floor(Math.random() * Math.floor(98446744073709));
     this.enqueueEvent(url, urlRef, 'pageview', urlMetadata, extraData);
   }
 
@@ -111,6 +129,7 @@ class ParselyTracker {
     }
     this.startEngagement(url, urlRef);
     if (url !== this.lastVideoPaused) {
+      this.vsid = Math.floor(Math.random() * Math.floor(98446744073709));
       this.enqueueEvent(url, urlRef, 'videostart', videoMetadata, extraData);
       this.lastVideoPaused = url;
     }
